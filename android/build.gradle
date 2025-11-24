@@ -1,0 +1,16 @@
+apply plugin: "com.android.library"
+
+android {
+    namespace "com.loctrack"
+    compileSdkVersion 34
+
+    defaultConfig {
+        minSdkVersion 21
+        targetSdkVersion 34
+    }
+}
+
+dependencies {
+    implementation "com.facebook.react:react-native:+"
+    implementation "com.google.android.gms:play-services-location:21.0.1"
+}
