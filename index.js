@@ -1,53 +1,36 @@
-// index.js
 import { NativeModules, NativeEventEmitter } from "react-native";
-import { useEffect } from "react";
 
 const { LocationServiceModule } = NativeModules;
 const emitter = new NativeEventEmitter(LocationServiceModule);
 
-/**
- * Start foreground location service
- */
+/** Old API — backward compatible */
 export function startLocationService(interval = 5000) {
   LocationServiceModule.startService(interval);
 }
 
-/**
- * Stop service
- */
+/** New API — supports background callback */
+export function startLocationServiceWithCallback(interval, callback) {
+  LocationServiceModule.startServiceWithCallback(interval, callback);
+}
+
+/** Subscribe to foreground JS updates */
+export function onLocationUpdate(listener) {
+  const sub = emitter.addListener("LocationUpdate", listener);
+  return () => sub.remove();
+}
+
 export function stopLocationService() {
   LocationServiceModule.stopService();
 }
 
-/**
- * Returns boolean (promise) whether service is active
- */
 export async function isLocationTrackingActive() {
-  return LocationServiceModule.isLocationTrackingActive();
-}
-
-/**
- * Subscribe to continuous updates (wrapper)
- */
-export function onLocationUpdate(callback) {
-  const sub = emitter.addListener("LocationUpdate", callback);
-  return () => sub.remove();
-}
-
-/**
- * Optional React Hook wrapper
- */
-export function useLocationUpdates(callback) {
-  useEffect(() => {
-    const unsub = onLocationUpdate(callback);
-    return () => unsub();
-  }, [callback]);
+  return await LocationServiceModule.isLocationTrackingActive();
 }
 
 export default {
   startLocationService,
+  startLocationServiceWithCallback,
   stopLocationService,
   onLocationUpdate,
-  useLocationUpdates,
   isLocationTrackingActive,
 };

@@ -1,9 +1,22 @@
 package com.loctrack
 
 /**
- * Holds the callback function that React Native sets when starting the location service.
- * This allows the Android service to invoke a JS callback via events.
+ * Holds callbacks:
+ * 1. JS EventEmitter callback (existing behavior) → foreground only
+ * 2. Background callback (new) → runs even when app is killed
  */
+
 object LocationCallbackHolder {
-    var onLocationUpdate: ((lat: Double, lng: Double, accuracy: Float) -> Unit)? = null
+
+    /** Foreground JS listener */
+    var onJsLocationUpdate: ((lat: Double, lng: Double, accuracy: Float) -> Unit)? = null
+
+    /** Background callback passed from JS (string command) */
+    var onBackgroundLocationUpdate: ((lat: Double, lng: Double, accuracy: Float) -> Unit)? = null
+
+    /** Clears both */
+    fun clear() {
+        onJsLocationUpdate = null
+        onBackgroundLocationUpdate = null
+    }
 }

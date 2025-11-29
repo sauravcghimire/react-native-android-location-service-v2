@@ -16,28 +16,33 @@ import kotlinx.coroutines.*
 
 class LocationServiceV2 : Service() {
 
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private lateinit var locationCallback: LocationCallback
+    private lateinit var fused: FusedLocationProviderClient
+    private lateinit var callback: LocationCallback
 
-    private var updateInterval: Long = 5000L
+    private var interval: Long = 5000L
 
-    private val serviceJob = SupervisorJob()
-    private val serviceScope = CoroutineScope(Dispatchers.IO + serviceJob)
+    private val job = SupervisorJob()
+    private val scope = CoroutineScope(Dispatchers.IO + job)
 
     companion object {
         private const val TAG = "LocationServiceV2"
-        private const val NOTIFICATION_ID = 202
+        private const val NOTIF_ID = 202
         private const val EXTRA_INTERVAL = "extra_interval"
+        const val EXTRA_BG_CALLBACK = "extra_bg_callback"
+
         @JvmStatic
         var isTracking: Boolean = false
 
         fun start(
             context: Context,
             interval: Long,
-            onUpdate: (lat: Double, lng: Double, accuracy: Float) -> Unit
+            onJsUpdate: ((lat: Double, lng: Double, accuracy: Float) -> Unit)? = null,
+            onBackgroundUpdate: ((lat: Double, lng: Double, accuracy: Float) -> Unit)? = null
         ) {
             isTracking = true
-            LocationCallbackHolder.onLocationUpdate = onUpdate
+
+            LocationCallbackHolder.onJsLocationUpdate = onJsUpdate
+            LocationCallbackHolder.onBackgroundLocationUpdate = onBackgroundUpdate
 
             val intent = Intent(context, LocationServiceV2::class.java).apply {
                 putExtra(EXTRA_INTERVAL, interval)
@@ -48,95 +53,75 @@ class LocationServiceV2 : Service() {
 
         fun stop(context: Context) {
             isTracking = false
-            LocationCallbackHolder.onLocationUpdate = null
+            LocationCallbackHolder.clear()
             context.stopService(Intent(context, LocationServiceV2::class.java))
         }
     }
 
     override fun onCreate() {
         super.onCreate()
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-        Log.d(TAG, "Service Created")
+        fused = LocationServices.getFusedLocationProviderClient(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        interval = intent?.getLongExtra(EXTRA_INTERVAL, 5000L) ?: 5000L
 
-        updateInterval = intent?.getLongExtra(EXTRA_INTERVAL, 5000L) ?: 5000L
+        startForeground(NOTIF_ID, notification())
 
-        startForeground(NOTIFICATION_ID, createNotification())
-
-        val request = LocationRequest.Builder(updateInterval)
+        val request = LocationRequest.Builder(interval)
             .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
-            .setMinUpdateIntervalMillis(updateInterval)
+            .setMinUpdateIntervalMillis(interval)
             .build()
 
-        if (!hasLocationPermission()) {
-            Log.e(TAG, "Missing location permission — cannot start location updates.")
-            return START_NOT_STICKY
-        }
-
-        // Initialize callback BEFORE using it
-        locationCallback = object : LocationCallback() {
+        callback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 result.locations.forEach { loc ->
-                    LocationCallbackHolder.onLocationUpdate?.let { callback ->
-                        serviceScope.launch {
-                            callback(loc.latitude, loc.longitude, loc.accuracy)
-                        }
+                    val lat = loc.latitude
+                    val lng = loc.longitude
+                    val acc = loc.accuracy
+
+                    scope.launch {
+                        // Foreground → JS listener
+                        LocationCallbackHolder.onJsLocationUpdate?.invoke(lat, lng, acc)
+
+                        // Background → Custom callback provided by JS
+                        LocationCallbackHolder.onBackgroundLocationUpdate?.invoke(lat, lng, acc)
                     }
                 }
             }
         }
 
-        try {
-            fusedLocationClient.requestLocationUpdates(
-                request,
-                locationCallback,
-                Looper.getMainLooper()
-            )
-            Log.d(TAG, "Location updates requested")
-        } catch (e: SecurityException) {
-            Log.e(TAG, "SecurityException", e)
-        }
+        fused.requestLocationUpdates(request, callback, Looper.getMainLooper())
 
         return START_STICKY
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        fusedLocationClient.removeLocationUpdates(locationCallback)
-        serviceJob.cancel()
-        Log.d(TAG, "Service Destroyed")
+        fused.removeLocationUpdates(callback)
+        job.cancel()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun createNotification(): Notification {
-        val channelId = "location_service_v2_channel"
+    private fun notification(): Notification {
+        val id = "loc_v2_channel"
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                channelId,
+                id,
                 "Location Tracking V2",
                 NotificationManager.IMPORTANCE_LOW
             )
-
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
         }
 
-        return NotificationCompat.Builder(this, channelId)
-            .setContentTitle("Location Service Running")
-            .setContentText("Interval: ${updateInterval / 1000}s")
+        return NotificationCompat.Builder(this, id)
+            .setContentTitle("Location Tracking Active")
+            .setContentText("Interval ${interval / 1000}s")
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setOngoing(true)
             .build()
-    }
-
-    private fun hasLocationPermission(): Boolean {
-        return checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) ==
-                android.content.pm.PackageManager.PERMISSION_GRANTED ||
-                checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) ==
-                android.content.pm.PackageManager.PERMISSION_GRANTED
     }
 }
