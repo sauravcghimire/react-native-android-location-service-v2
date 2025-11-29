@@ -16,8 +16,13 @@ export function addLocationListener(callback) {
   return () => subscription.remove();
 }
 
+export function isLocationTrackingActive() {
+  return LocationServiceModule.isLocationTrackingActive();
+}
+
 export default {
   startLocationService,
   stopLocationService,
   addLocationListener,
+  isLocationTrackingActive,
 };

@@ -28,12 +28,15 @@ class LocationServiceV2 : Service() {
         private const val TAG = "LocationServiceV2"
         private const val NOTIFICATION_ID = 202
         private const val EXTRA_INTERVAL = "extra_interval"
+        @JvmStatic
+        var isTracking: Boolean = false
 
         fun start(
             context: Context,
             interval: Long,
             onUpdate: (lat: Double, lng: Double, accuracy: Float) -> Unit
         ) {
+            isTracking = true
             LocationCallbackHolder.onLocationUpdate = onUpdate
 
             val intent = Intent(context, LocationServiceV2::class.java).apply {
@@ -44,6 +47,7 @@ class LocationServiceV2 : Service() {
         }
 
         fun stop(context: Context) {
+            isTracking = false
             LocationCallbackHolder.onLocationUpdate = null
             context.stopService(Intent(context, LocationServiceV2::class.java))
         }

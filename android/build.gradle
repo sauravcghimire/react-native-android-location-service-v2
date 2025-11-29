@@ -1,16 +1,25 @@
 apply plugin: "com.android.library"
+apply plugin: "kotlin-android"
 
 android {
     namespace "com.loctrack"
-    compileSdkVersion 34
+    compileSdk = 34
 
     defaultConfig {
-        minSdkVersion 21
-        targetSdkVersion 34
+        minSdk = 21
+        targetSdk = 34
+    }
+
+    sourceSets {
+        main {
+            java.srcDirs = ["src/main/java"]
+            manifest.srcFile "src/main/AndroidManifest.xml"
+        }
     }
 }
 
 dependencies {
     implementation "com.facebook.react:react-native:+"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.0"
     implementation "com.google.android.gms:play-services-location:21.0.1"
 }

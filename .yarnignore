@@ -1,0 +1,9 @@
+android/.gradle/
+android/build/
+example/
+ios/
+node_modules/
+*.log
+.git/
+.gitignore
+.DS_Store

@@ -29,6 +29,11 @@ class LocationModule(private val reactContext: ReactApplicationContext) :
         LocationServiceV2.stop(reactContext)
     }
 
+    @ReactMethod
+    fun isLocationTrackingActive(promise: Promise) {
+        promise.resolve(LocationServiceV2.isTracking)
+    }
+
     /**
      * Send event to JS listener
      */
