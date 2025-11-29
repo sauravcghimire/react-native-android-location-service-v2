@@ -1,7 +1,7 @@
 {
   "name": "react-native-android-location-service-v2",
-  "version": "1.0.5",
-  "description": "Android-only foreground location tracking service for React Native",
+  "version": "1.0.6",
+  "description": "Android-only foreground and backgroundlocation tracking service for React Native",
   "main": "index.js",
   "types": "index.d.ts",
   "react-native": {
