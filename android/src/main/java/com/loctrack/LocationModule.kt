@@ -1,6 +1,8 @@
 package com.loctrack
 
 import com.facebook.react.bridge.*
+import com.facebook.react.modules.core.DeviceEventManagerModule
+
 
 class LocationModule(private val reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext) {
