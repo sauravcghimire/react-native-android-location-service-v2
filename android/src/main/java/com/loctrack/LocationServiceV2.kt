@@ -79,9 +79,19 @@ class LocationServiceV2 : Service() {
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 result.locations.forEach { loc ->
+                    // 1) JS Callback (only works when JS is alive)
                     LocationCallbackHolder.onLocationUpdate?.let { callback ->
                         serviceScope.launch {
                             callback(loc.latitude, loc.longitude, loc.accuracy)
+                        }
+                    }
+
+                    // 2) Native Callback (ALWAYS works even when JS dead)
+                    LocationBackgroundHandler.onLocationUpdate?.let { nativeCallback ->
+                        try {
+                            nativeCallback(loc.latitude, loc.longitude, loc.accuracy)
+                        } catch (e: Exception) {
+                            Log.e("LocationServiceV2", "Native background callback failed", e)
                         }
                     }
                 }
