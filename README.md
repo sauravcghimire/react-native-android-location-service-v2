@@ -12,86 +12,87 @@ Perfect for:
 ---
 
 ## Installation
-
+```
 yarn add react-native-android-location-service-v2  
 or  
 npm install react-native-android-location-service-v2
 
 Autolinking works for RN 0.60+.
+```
 
 ---
 
 ## Android Setup
 
 Add required permissions to your main AndroidManifest.xml:
-
+```
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+```
 
 Register the foreground service:
-
+```
 <service
   android:name="com.loctrack.LocationServiceV2"
   android:foregroundServiceType="location"
   android:exported="false" />
-
+```
 ---
 
 # 📡 Usage
 
 ## Start Tracking
-
+```
 import LocationService from "react-native-android-location-service-v2";
 
 LocationService.startLocationService(3000); // update every 3 seconds
-
+```
 ---
 
 ## Subscribe to Location Updates (Foreground JS)
-
+```
 const unsubscribe = LocationService.onLocationUpdate(loc => {
   console.log("📍 Location:", loc);
 });
-
 // later…
 unsubscribe();
-
+```
 ---
 
 ## React Hook Example
-
+```
 useEffect(() => {
   const unsub = LocationService.onLocationUpdate(loc => {
     console.log("LAT:", loc.latitude);
   });
   return unsub;
 }, []);
-
+```
 ---
 
 ## Stop Tracking
-
+```
 LocationService.stopLocationService();
-
+```
 ---
 
 ## Check if Tracking Is Active
-
+```
 const active = await LocationService.isLocationTrackingActive();
 console.log("Tracking?", active);
-
+```
 ---
 
 # Location Event Payload
-
+```
 {
   "latitude": 27.7172,
   "longitude": 85.3240,
   "accuracy": 4.5
 }
-
+```
 ---
 
 # Native Background Callback (Runs When App Is Killed)
@@ -111,10 +112,11 @@ Use this for:
 ## Step 1 — Add background callback inside MainApplication.kt
 
 Open:
+```
 android/app/src/main/java/<your-package>/MainApplication.kt
-
+```
 Add:
-
+```
 import com.loctrack.LocationBackgroundHandler
 import android.util.Log
 import android.content.Context
@@ -136,15 +138,15 @@ override fun onCreate() {
         Log.d("BG_CALLBACK", "Background location: $entry")
     }
 }
-
+```
 ---
 
 ## Optional — Override in MainActivity.kt
-
+```
 LocationBackgroundHandler.onLocationUpdate = { context, lat, lng, acc ->
     Log.d("MAIN_ACTIVITY_CALLBACK", "Got location: $lat, $lng (±$acc)")
 }
-
+```
 ---
 
 # API Reference
