@@ -1,177 +1,268 @@
-# react-native-android-location-service-v2
+# 🚀 react-native-android-location-service-v2
 
-A lightweight **Android-only foreground + background + killed-state location tracking service** for React Native apps.
+Reliable **Android-only foreground + background + killed-state location tracking** for React Native.
 
 Perfect for:
 - Delivery / Fleet tracking  
-- Fitness apps  
-- Trip logging  
-- Background-safe continuous GPS updates (even when the app is swiped away)  
-- Custom native logic on every location update  
+- Fitness & route logging  
+- Passive background movement detection  
+- High-accuracy GPS + geofence-based tracking  
+- Running JS **even when the app is killed**  
+
+This library provides:
+- 🔹 Continuous GPS tracking  
+- 🔹 Geofence-driven tracking (low battery use)  
+- 🔹 JS foreground listeners  
+- 🔹 JS **background headless task**  
+- 🔹 Simple & stable RN API  
+- 🔹 Native Kotlin implementation  
 
 ---
 
-## Installation
+## 📦 Installation
+
 ```
-yarn add react-native-android-location-service-v2  
-or  
+yarn add react-native-android-location-service-v2
+# or
 npm install react-native-android-location-service-v2
-
-Autolinking works for RN 0.60+.
 ```
+
+Autolinking works for RN 0.60+
 
 ---
 
-## Android Setup
+## ⚙️ Android Setup
 
-Add required permissions to your main AndroidManifest.xml:
-```
+Add required permissions to your **app's AndroidManifest.xml**:
+
+```xml
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 ```
 
-Register the foreground service:
-```
-<service
-  android:name="com.loctrack.LocationServiceV2"
-  android:foregroundServiceType="location"
-  android:exported="false" />
-```
+### ❗ No service or receiver declarations needed  
+The library auto-registers:
+
+- `LocationServiceV2`
+- `LocationGeofenceServiceV2`
+- `GeofenceReceiverV2`
+
+Do **not** add them manually.
+
 ---
 
 # 📡 Usage
 
-## Start Tracking
-```
+## ▶️ Start continuous GPS tracking
+
+```js
 import LocationService from "react-native-android-location-service-v2";
 
-LocationService.startLocationService(3000); // update every 3 seconds
+LocationService.startLocationService(3000); // every 3 seconds
 ```
+
 ---
 
-## Subscribe to Location Updates (Foreground JS)
+## ▶️ Start Geofence-based tracking (battery efficient)
+
+```js
+LocationService.startLocationServiceWithGeofence();
 ```
-const unsubscribe = LocationService.onLocationUpdate(loc => {
-  console.log("📍 Location:", loc);
-});
-// later…
-unsubscribe();
-```
+
 ---
 
-## React Hook Example
-```
-useEffect(() => {
-  const unsub = LocationService.onLocationUpdate(loc => {
-    console.log("LAT:", loc.latitude);
-  });
-  return unsub;
-}, []);
-```
----
+## 🛑 Stop tracking
 
-## Stop Tracking
-```
+```js
 LocationService.stopLocationService();
 ```
+
 ---
 
-## Check if Tracking Is Active
-```
+## ❓ Check if tracking is active
+
+```js
 const active = await LocationService.isLocationTrackingActive();
-console.log("Tracking?", active);
+console.log("Tracking active?", active);
 ```
+
 ---
 
-# Location Event Payload
+# 🎧 Foreground JS Listener (runs when app is open)
+
+```js
+const unsubscribe = LocationService.onLocationUpdate(({ latitude, longitude, accuracy }) => {
+  console.log("Foreground location:", latitude, longitude, accuracy);
+});
+
+// later
+unsubscribe();
 ```
+
+---
+
+# 🪝 React Hook Usage
+
+```js
+useEffect(() => {
+  return LocationService.onLocationUpdate(loc => {
+    console.log("Hook location:", loc);
+  });
+}, []);
+```
+
+---
+
+# 🛰 Background / Killed-State JS Handler (Headless Task)
+
+Runs when:
+- App is backgrounded  
+- App is killed  
+- Device is locked  
+
+### 1️⃣ Register background handler once in JS (App.js or index.js)
+
+```js
+import LocationService from "react-native-android-location-service-v2";
+
+LocationService.registerBackgroundHandler(async ({ latitude, longitude, accuracy }) => {
+  console.log("📡 Background:", latitude, longitude, accuracy);
+
+  await fetch("https://your-server.com/locations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      lat: latitude,
+      lng: longitude,
+      acc: accuracy,
+      timestamp: Date.now(),
+    }),
+  });
+});
+```
+
+---
+
+### 2️⃣ Register Headless Task in `index.js`
+
+```js
+import { AppRegistry } from "react-native";
+import App from "./App";
+import { name as appName } from "./app.json";
+import LocationService from "react-native-android-location-service-v2";
+
+// MUST match the native name "LocationBackgroundTask"
+AppRegistry.registerHeadlessTask(
+  "LocationBackgroundTask",
+  () => LocationService.__backgroundHandler
+);
+
+AppRegistry.registerComponent(appName, () => App);
+```
+
+---
+
+# 📤 Location event example
+
+```json
 {
   "latitude": 27.7172,
   "longitude": 85.3240,
-  "accuracy": 4.5
+  "accuracy": 4.2
 }
 ```
----
-
-# Native Background Callback (Runs When App Is Killed)
-
-When the app is killed, JS stops.  
-But the library continues tracking and allows **custom native Kotlin code** to run on every location update.
-
-Use this for:
-- Storing locations in SharedPreferences  
-- Uploading to server  
-- Writing to a local database  
-- Triggering geofences  
-- Logging debug information  
 
 ---
 
-## Step 1 — Add background callback inside MainApplication.kt
+# ⚡ Geofence Tracking Mode
 
-Open:
+The library includes a Kotlin-based geofence engine:
+
+- Creates a geofence around the user  
+- Fires when the user exits  
+- Fetches fresh GPS  
+- Sends update to foreground JS  
+- Sends update to background JS (headless task)  
+- Recreates new geofence  
+- Runs forever  
+
+Start it:
+
+```js
+LocationService.startLocationServiceWithGeofence();
 ```
-android/app/src/main/java/<your-package>/MainApplication.kt
-```
-Add:
-```
-import com.loctrack.LocationBackgroundHandler
-import android.util.Log
-import android.content.Context
 
-override fun onCreate() {
-    super.onCreate()
+This is **much more battery-friendly** than continuous GPS.
 
-    // This runs even when the app is KILLED
-    LocationBackgroundHandler.onLocationUpdate = { context, lat, lng, acc ->
+---
 
-        val prefs = context.getSharedPreferences("bg_locations", Context.MODE_PRIVATE)
+# 📘 TypeScript Definitions
 
-        val entry = "LAT=$lat LNG=$lng ACC=$acc TIME=${System.currentTimeMillis()}"
+```ts
+declare module "react-native-android-location-service-v2" {
+  export interface LocationData {
+    latitude: number;
+    longitude: number;
+    accuracy: number;
+  }
 
-        prefs.edit()
-            .putString("last_location", entry)
-            .apply()
+  export function startLocationService(interval: number): void;
+  export function startLocationServiceWithGeofence(): void;
+  export function stopLocationService(): void;
+  export function isLocationTrackingActive(): Promise<boolean>;
 
-        Log.d("BG_CALLBACK", "Background location: $entry")
-    }
+  export function onLocationUpdate(
+    cb: (data: LocationData) => void
+  ): () => void;
+
+  export function registerBackgroundHandler(
+    cb: (data: LocationData) => void
+  ): void;
+
+  export function useLocationUpdates(
+    cb: (data: LocationData) => void
+  ): void;
+
+  const _default: any;
+
+  export default _default;
 }
 ```
+
 ---
 
-## Optional — Override in MainActivity.kt
-```
-LocationBackgroundHandler.onLocationUpdate = { context, lat, lng, acc ->
-    Log.d("MAIN_ACTIVITY_CALLBACK", "Got location: $lat, $lng (±$acc)")
-}
-```
----
-
-# API Reference
+# 🧩 API Summary
 
 | Method | Description |
 |--------|-------------|
-| startLocationService(intervalMs) | Starts continuous GPS tracking |
-| stopLocationService() | Stops the tracker |
-| isLocationTrackingActive() | Returns true/false |
-| onLocationUpdate(cb) | JS listener for foreground updates |
+| `startLocationService(interval)` | Start GPS tracking |
+| `startLocationServiceWithGeofence()` | Start geofence-driven tracking |
+| `stopLocationService()` | Stop all tracking |
+| `isLocationTrackingActive()` | Returns true/false |
+| `onLocationUpdate(cb)` | Foreground JS listener |
+| `registerBackgroundHandler(cb)` | Background JS listener (killed state) |
+| `useLocationUpdates(cb)` | React hook wrapper |
 
 ---
 
-# Important Notes
+# ⚠️ Important Notes
 
-- JS listeners do **not** run when the app is killed  
-  → Use the **Native Background Callback**
-- Android 10+ requires ACCESS_BACKGROUND_LOCATION  
-- Heavy background work should run off the main thread  
-- Foreground service notification is mandatory by Android rules  
+- Headless JS only runs on **real devices**, not emulator  
+- Background tracking requires `"ACCESS_BACKGROUND_LOCATION"`  
+- Android 14 requires foregroundServiceType="location" (already configured)  
+- Foreground notification is required by Android OS  
+- JS callbacks stop when app is killed → background handler continues  
 
 ---
 
-# Author  
-Saurav Ghimire
+# 👨‍💻 Author
 
-# License  
+**Saurav Ghimire**
+
+---
+
+# 📄 License
+
 MIT
