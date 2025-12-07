@@ -1,42 +1,32 @@
-// index.js
 import { NativeModules, NativeEventEmitter } from "react-native";
-import { useEffect } from "react";
 
 const { LocationServiceModule } = NativeModules;
 const emitter = new NativeEventEmitter(LocationServiceModule);
 
-/**
- * Start foreground location service
- */
+// --------------------------------------------------
+// Foreground listener storage
+// --------------------------------------------------
 export function startLocationService(interval = 5000) {
   LocationServiceModule.startService(interval);
 }
 
-/**
- * Stop service
- */
+export function startLocationServiceWithGeofence() {
+  LocationServiceModule.startServiceWithGeofence();
+}
+
 export function stopLocationService() {
   LocationServiceModule.stopService();
 }
 
-/**
- * Returns boolean (promise) whether service is active
- */
 export async function isLocationTrackingActive() {
   return LocationServiceModule.isLocationTrackingActive();
 }
 
-/**
- * Subscribe to continuous updates (wrapper)
- */
 export function onLocationUpdate(callback) {
   const sub = emitter.addListener("LocationUpdate", callback);
   return () => sub.remove();
 }
 
-/**
- * Optional React Hook wrapper
- */
 export function useLocationUpdates(callback) {
   useEffect(() => {
     const unsub = onLocationUpdate(callback);
@@ -44,10 +34,41 @@ export function useLocationUpdates(callback) {
   }, [callback]);
 }
 
+// --------------------------------------------------
+// BACKGROUND HANDLER STORAGE
+// --------------------------------------------------
+let backgroundHandler = null;
+
+/**
+ * Register a JS handler that will run in headless/background mode.
+ */
+export function registerBackgroundHandler(cb) {
+  backgroundHandler = cb;
+}
+
+/**
+ * Called by Headless JS → executes developer's callback.
+ */
+export const __backgroundHandler = async (data) => {
+  try {
+    if (backgroundHandler) {
+      await backgroundHandler(data);
+    }
+  } catch (e) {
+    console.log("Background handler error", e);
+  }
+};
+
+// --------------------------------------------------
+// EXPORT PUBLIC API
+// --------------------------------------------------
 export default {
   startLocationService,
+  startLocationServiceWithGeofence,
   stopLocationService,
   onLocationUpdate,
   useLocationUpdates,
   isLocationTrackingActive,
+  registerBackgroundHandler,
+  __backgroundHandler,
 };

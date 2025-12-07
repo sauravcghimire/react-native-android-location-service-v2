@@ -1,10 +1,38 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application>
+
+        <!-- Core continuous location service -->
         <service
             android:name="com.loctrack.LocationServiceV2"
-            android:foregroundServiceType="location"
-            android:exported="false"/>
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
+        <!-- Geofence-driven location service -->
+        <service
+            android:name="com.loctrack.LocationGeofenceServiceV2"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
+        <!-- Receiver for geofence transition -->
+        <receiver
+            android:name="com.loctrack.GeofenceReceiverV2"
+            android:enabled="true"
+            android:exported="false">
+
+            <!-- Matches the pendingIntent action -->
+            <intent-filter>
+                <action android:name="com.loctrack.GEOFENCE_EVENT" />
+            </intent-filter>
+
+        </receiver>
+        <service
+            android:name="com.loctrack.LocationHeadlessTask"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+
     </application>
 
 </manifest>
